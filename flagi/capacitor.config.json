@@ -1,0 +1,14 @@
+{
+  "appId": "com.piotrdudzic.flagi",
+  "appName": "Flagi Państw",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "ios": {
+      "allowMixedContent": true
+    }
+  },
+  "ios": {
+    "contentInset": "automatic"
+  }
+}

@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Okno Mac - 3 Kolumny</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f7f7f4;
+            min-height: 100vh;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mac-window {
+            width: 1125px;
+            height: 600px;
+            max-width: calc(100% - 40px);
+            background: #f7f7f4;
+            border-radius: 10px;
+            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.14), 
+                        0 14px 32px rgba(0, 0, 0, 0.1), 
+                        0 0 0 1px rgba(0, 0, 0, 0.05);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: default;
+            z-index: 1;
+            transition: box-shadow 0.2s ease;
+            resize: none;
+        }
+
+        .mac-window.active {
+            z-index: 10;
+            box-shadow: 0 28px 70px rgba(0, 0, 0, 0.2), 
+                        0 14px 32px rgba(0, 0, 0, 0.15), 
+                        0 0 0 1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Style dla okna Windows */
+        .windows-window {
+            width: 1125px;
+            height: 600px;
+            max-width: calc(100% - 40px);
+            background: #ffffff;
+            border-radius: 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), 
+                        0 0 0 1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            cursor: default;
+            z-index: 1;
+            transition: box-shadow 0.2s ease;
+            resize: none;
+        }
+
+        .windows-window.active {
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2), 
+                        0 0 0 1px rgba(0, 0, 0, 0.15);
+        }
+
+        .windows-titlebar {
+            height: 30px;
+            background: #0078d4;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 8px;
+            user-select: none;
+            cursor: move;
+            position: relative;
+        }
+
+        .windows-titlebar:active {
+            cursor: grabbing;
+        }
+
+        .windows-titlebar .window-title {
+            position: static;
+            left: auto;
+            transform: none;
+            font-size: 12px;
+            color: #ffffff;
+            font-weight: 400;
+            margin-left: 8px;
+        }
+
+        .windows-buttons {
+            display: flex;
+            gap: 0;
+            align-items: center;
+        }
+
+        .windows-button {
+            width: 46px;
+            height: 30px;
+            border: none;
+            background: transparent;
+            color: #ffffff;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.15s ease;
+        }
+
+        .windows-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .windows-button.close:hover {
+            background: #e81123;
+        }
+
+        .windows-button svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+        }
+
+        .titlebar {
+            height: 28px;
+            background: #f7f7f4;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            user-select: none;
+            cursor: move;
+            position: relative;
+        }
+
+        /* Przycisk menu (3 kropki) w titlebar */
+        .titlebar-menu-button {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            padding: 0;
+            margin-left: auto;
+            margin-right: 8px;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            position: relative;
+            z-index: 5;
+        }
+
+        .titlebar:hover .titlebar-menu-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 1;
+        }
+
+        .titlebar-menu-button svg {
+            width: 18px;
+            height: 18px;
+            fill: rgba(128, 128, 128, 0.7);
+        }
+
+        .titlebar-menu-button:hover svg {
+            fill: rgba(128, 128, 128, 0.9);
+        }
+
+        /* Menu dropdown */
+        .titlebar-menu {
+            position: absolute;
+            top: 100%;
+            right: 8px;
+            background: #ffffff;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            min-width: 180px;
+            padding: 4px 0;
+            z-index: 1000;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .titlebar-menu.show {
+            display: block;
+        }
+
+        .titlebar-menu-item {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            text-align: left;
+            font-size: 13px;
+            color: rgba(0, 0, 0, 0.8);
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            position: relative;
+        }
+
+        .titlebar-menu-item:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .titlebar-menu-item:active {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        /* Checkbox (kwadracik) */
+        .titlebar-menu-checkbox {
+            width: 16px;
+            height: 16px;
+            border: 1.5px solid rgba(0, 0, 0, 0.3);
+            border-radius: 3px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            background: #ffffff;
+            transition: all 0.15s ease;
+        }
+
+        .titlebar-menu-item.checked .titlebar-menu-checkbox {
+            background: #0078d4;
+            border-color: #0078d4;
+        }
+
+        /* Ptaszek (checkmark) */
+        .titlebar-menu-checkmark {
+            width: 12px;
+            height: 12px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .titlebar-menu-item.checked .titlebar-menu-checkmark {
+            opacity: 1;
+        }
+
+        .titlebar-menu-checkmark svg {
+            width: 100%;
+            height: 100%;
+            stroke: #ffffff;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .titlebar-menu-divider {
+            height: 1px;
+            background: rgba(0, 0, 0, 0.1);
+            margin: 4px 0;
+        }
+
+        .titlebar:active {
+            cursor: grabbing;
+        }
+
+        .traffic-lights {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .traffic-light {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+
+        .traffic-light.red {
+            background-color: rgba(128, 128, 128, 0.6);
+        }
+
+        .traffic-light.yellow {
+            background-color: rgba(128, 128, 128, 0.6);
+        }
+
+        .traffic-light.green {
+            background-color: rgba(128, 128, 128, 0.6);
+        }
+
+        /* Blade kropki dla nieaktywnego okna */
+        .mac-window:not(.active) .traffic-light.red,
+        .mac-window:not(.active) .traffic-light.yellow,
+        .mac-window:not(.active) .traffic-light.green {
+            background-color: rgba(128, 128, 128, 0.3);
+        }
+
+        .window-title {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: rgba(0, 0, 0, 0.7);
+            font-weight: 500;
+        }
+
+        .window-content {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .column {
+            flex: 1;
+            padding: 20px 0px 20px 20px;
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            background: #ffffff;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+            outline: none;
+        }
+
+        /* Kolor tła dla pierwszej i drugiej kolumny w oknie z tabami (window1 i window2) */
+        #window1 .column:not(:last-child),
+        #window2 .column:not(:last-child) {
+            background: #f7f7f4;
+        }
+
+        .column:focus {
+            outline: none;
+        }
+
+        .column .tabs-container {
+            margin: -18px 0 0 -20px;
+            padding: 0;
+            width: calc(100% + 20px);
+        }
+
+        .column:last-child {
+            border-right: none;
+        }
+
+        .column-header {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(0, 0, 0, 0.5);
+            margin: -18px -20px 16px -20px;
+            padding: 0 12px 0 12px;
+            height: 26px;
+            display: flex;
+            align-items: center;
+            line-height: 26px;
+        }
+
+        .column-content {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #555;
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 0px;
+        }
+
+        /* Ukryj scrollbar domyślnie */
+        .column-content {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+
+        .column-content::-webkit-scrollbar {
+            width: 0px !important;
+            background: transparent;
+        }
+
+        /* Pokaż scrollbar podczas przewijania */
+        .column-content.scrolling {
+            scrollbar-width: thin; /* Firefox */
+            -ms-overflow-style: auto; /* IE and Edge */
+        }
+
+        .column-content.scrolling::-webkit-scrollbar {
+            width: 8px !important;
+        }
+
+        .column-content.scrolling::-webkit-scrollbar-track {
+            background: transparent;
+            margin-right: 0;
+        }
+
+        .column-content.scrolling::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0;
+        }
+
+        .column-content.scrolling::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .column-content p {
+            margin-bottom: 12px;
+        }
+
+        /* Wyrównanie pierwszego elementu w drugiej kolumnie */
+        #process-details-content > *:first-child,
+        .tab-panel > *:first-child {
+            margin-top: 0;
+        }
+
+        #process-details-content > h3:first-child,
+        .tab-panel > h3:first-child {
+            margin-top: 0;
+        }
+
+        .column-content h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .column-content ul {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .column-content li {
+            margin-bottom: 6px;
+        }
+
+        /* Klikalne procesy w kolumnie 1 */
+        .process-item {
+            cursor: pointer;
+            padding: 4px 8px;
+            margin: 2px -8px;
+            border-radius: 4px;
+            transition: background-color 0.15s ease;
+            list-style: none;
+        }
+
+        .process-item:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+
+        .process-item.active {
+            background-color: rgba(0, 120, 212, 0.1);
+            color: #0078d4;
+        }
+
+        /* Bardziej szary kolor czcionki dla kolumny 1 */
+        #window1 .column:first-child .column-content,
+        #window2 .column:first-child .column-content {
+            color: #888;
+        }
+
+        #window1 .column:first-child .column-content h3,
+        #window2 .column:first-child .column-content h3 {
+            color: #777;
+        }
+
+        #window1 .column:first-child .column-content p,
+        #window2 .column:first-child .column-content p {
+            color: #999;
+        }
+
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        /* Style dla tabów w stylu cursor.html */
+        .tabs-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .tabs-list {
+            display: flex;
+            height: 26px;
+            align-items: flex-end;
+            gap: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            font-size: 13px;
+            background: #f5f5f2;
+            position: relative;
+        }
+
+        .tabs-list::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 1px;
+            background: rgba(0, 0, 0, 0.1);
+            z-index: 0;
+        }
+
+        .tab {
+            display: flex;
+            height: 100%;
+            cursor: pointer;
+            align-items: center;
+            gap: 8px;
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            padding: 0 12px 0 12px;
+            position: relative;
+            background: #f7f7f4;
+            color: rgba(0, 0, 0, 0.6);
+            transition: background-color 0.15s ease, border-bottom 0.15s ease;
+            user-select: none;
+            z-index: 1;
+        }
+
+        .tab:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        .tab.active {
+            background: #ffffff;
+            color: #333;
+            border-bottom: none !important;
+            padding-bottom: 0;
+            margin-bottom: -2px;
+            position: relative;
+            z-index: 2;
+            height: calc(100% + 1px);
+        }
+
+        .tab.active .tab-button {
+            color: #333;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            bottom: -2px;
+            left: 0;
+            height: 2px;
+            background: #ffffff;
+            z-index: 3;
+        }
+
+        .tab-button {
+            display: flex;
+            height: 100%;
+            cursor: pointer;
+            align-items: center;
+            border: none;
+            background: none;
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(0, 0, 0, 0.5);
+            padding: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .tab-close {
+            display: flex;
+            height: 100%;
+            cursor: pointer;
+            align-items: center;
+            margin-left: 4px;
+            padding: 0;
+            border: none;
+            background: none;
+            color: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.15s ease, color 0.15s ease;
+        }
+
+        .tab.active .tab-close {
+            opacity: 1;
+        }
+
+        .tab:hover .tab-close {
+            opacity: 1;
+        }
+
+        .tab-close:hover {
+            color: #333;
+        }
+
+        .tab-close svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .tabs-content {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 16px 0px 16px 16px;
+            background: #ffffff;
+            height: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Ukryj scrollbar domyślnie dla tabs-content */
+        .tabs-content {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+
+        .tabs-content::-webkit-scrollbar {
+            width: 0px !important;
+            background: transparent;
+        }
+
+        /* Pokaż scrollbar podczas przewijania */
+        .tabs-content.scrolling {
+            scrollbar-width: thin; /* Firefox */
+            -ms-overflow-style: auto; /* IE and Edge */
+        }
+
+        .tabs-content.scrolling::-webkit-scrollbar {
+            width: 8px !important;
+        }
+
+        .tabs-content.scrolling::-webkit-scrollbar-track {
+            background: transparent;
+            margin-right: 0;
+        }
+
+        .tabs-content.scrolling::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0;
+        }
+
+        .tabs-content.scrolling::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .tab-panel {
+            display: none;
+            font-size: 13px;
+            line-height: 1.6;
+            color: rgba(0, 0, 0, 0.5);
+            width: 100%;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            outline: none;
+        }
+
+        .tab-panel[contenteditable="true"] {
+            cursor: text;
+            min-height: 100px;
+        }
+
+        .tab-panel[contenteditable="true"]:focus {
+            outline: 1px solid rgba(0, 0, 0, 0.1);
+            outline-offset: -1px;
+        }
+
+        /* Zapobiegaj edycji podczas kliknięcia w przyciski tabów */
+        .tab-button,
+        .tab-close {
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* Przycisk Save podczas edycji */
+        .tab-save-button {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            padding: 6px 12px;
+            background: #0078d4;
+            color: #ffffff;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            z-index: 10;
+            display: none;
+            transition: background-color 0.2s ease;
+        }
+
+        .tab-save-button:hover {
+            background: #0063b1;
+        }
+
+        .tab-save-button:active {
+            background: #005a9e;
+        }
+
+        .tabs-content.editing .tab-save-button {
+            display: block;
+        }
+
+        .tabs-content {
+            position: relative;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        .tab-panel p {
+            margin-bottom: 12px;
+            color: rgba(0, 0, 0, 0.5);
+            font-size: 13px;
+        }
+
+        .tab-panel h3 {
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(0, 0, 0, 0.5);
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .tab-panel ul {
+            margin-left: 20px;
+            margin-bottom: 12px;
+        }
+
+        .tab-panel li {
+            margin-bottom: 6px;
+            color: rgba(0, 0, 0, 0.5);
+        }
+
+        .tabs-spacer {
+            flex: 1;
+            height: 100%;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .mac-window.dragging {
+            transition: none;
+            cursor: grabbing;
+        }
+
+        /* Responsywność dla urządzeń mobilnych */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .mac-window {
+                width: calc(100% - 20px);
+                max-width: 100%;
+                border-radius: 8px;
+                box-shadow: 0 14px 35px rgba(0, 0, 0, 0.12), 
+                            0 7px 16px rgba(0, 0, 0, 0.08), 
+                            0 0 0 1px rgba(0, 0, 0, 0.05);
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+            }
+
+            .titlebar {
+                height: 32px;
+                padding: 0 10px;
+            }
+
+            .traffic-light {
+                width: 12px;
+                height: 12px;
+            }
+
+            .window-title {
+                font-size: 11px;
+            }
+
+            .window-content {
+                flex-direction: column;
+                min-height: auto;
+            }
+
+            .column {
+                padding: 15px;
+                border-right: none;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            }
+
+            .column:last-child {
+                border-bottom: none;
+            }
+
+            .column-header {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+            .column-content {
+                font-size: 14px;
+            }
+
+            .column-content h3 {
+                font-size: 16px;
+                margin-top: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            body {
+                padding: 5px;
+            }
+
+            .mac-window {
+                border-radius: 6px;
+            }
+
+            .titlebar {
+                height: 30px;
+                padding: 0 8px;
+            }
+
+            .traffic-light {
+                width: 10px;
+                height: 10px;
+            }
+
+            .window-title {
+                font-size: 10px;
+            }
+
+            .column {
+                padding: 12px;
+            }
+
+            .column-header {
+                font-size: 15px;
+                margin-bottom: 10px;
+            }
+
+            .column-content {
+                font-size: 13px;
+            }
+
+            .column-content h3 {
+                font-size: 15px;
+            }
+
+            .column-content ul {
+                margin-left: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="mac-window" id="window1">
+        <div class="titlebar">
+            <div class="traffic-lights">
+                <div class="traffic-light red"></div>
+                <div class="traffic-light yellow"></div>
+                <div class="traffic-light green"></div>
+            </div>
+            <div class="window-title">ISO 21434</div>
+            <button class="titlebar-menu-button" type="button" aria-label="Menu">
+                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="5" cy="12" r="1.5"/>
+                    <circle cx="12" cy="12" r="1.5"/>
+                    <circle cx="19" cy="12" r="1.5"/>
+                </svg>
+            </button>
+            <div class="titlebar-menu">
+                <button class="titlebar-menu-item" type="button" data-action="remove-column" data-column="1">
+                    <div class="titlebar-menu-checkbox">
+                        <div class="titlebar-menu-checkmark">
+                            <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 6 L5 9 L10 2"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <span>Usuń kolumnę 1</span>
+                </button>
+                <button class="titlebar-menu-item" type="button" data-action="remove-column" data-column="2">
+                    <div class="titlebar-menu-checkbox">
+                        <div class="titlebar-menu-checkmark">
+                            <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 6 L5 9 L10 2"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <span>Usuń kolumnę 2</span>
+                </button>
+                <button class="titlebar-menu-item" type="button" data-action="remove-column" data-column="3">
+                    <div class="titlebar-menu-checkbox">
+                        <div class="titlebar-menu-checkmark">
+                            <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 6 L5 9 L10 2"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <span>Usuń kolumnę 3</span>
+                </button>
+            </div>
+        </div>
+        <div class="window-content">
+            <div class="column" tabindex="0" id="processes-column">
+                <div class="column-header">ISO 21434 Processes</div>
+                <div class="column-content">
+                    <p>Processes defined in ISO/SAE 21434 — Road vehicles — Cybersecurity engineering:</p>
+                    
+                    <h3>Clause 5: Organizational cybersecurity management</h3>
+                    <ul>
+                        <li class="process-item" data-process="cybersecurity-governance" data-standard="iso21434">Cybersecurity governance</li>
+                        <li class="process-item" data-process="cybersecurity-culture" data-standard="iso21434">Cybersecurity culture</li>
+                        <li class="process-item" data-process="information-sharing" data-standard="iso21434">Information sharing</li>
+                        <li class="process-item" data-process="management-systems" data-standard="iso21434">Management systems</li>
+                        <li class="process-item" data-process="tool-management" data-standard="iso21434">Tool management</li>
+                        <li class="process-item" data-process="information-security-management" data-standard="iso21434">Information security management</li>
+                        <li class="process-item" data-process="organizational-cybersecurity-audit" data-standard="iso21434">Organizational cybersecurity audit</li>
+                    </ul>
+                    
+                    <h3>Clause 6: Project dependent cybersecurity management</h3>
+                    <ul>
+                        <li class="process-item" data-process="cybersecurity-responsibilities" data-standard="iso21434">Cybersecurity responsibilities</li>
+                        <li class="process-item" data-process="cybersecurity-planning" data-standard="iso21434">Cybersecurity planning</li>
+                        <li class="process-item" data-process="tailoring" data-standard="iso21434">Tailoring</li>
+                        <li class="process-item" data-process="reuse" data-standard="iso21434">Reuse</li>
+                        <li class="process-item" data-process="component-out-of-context" data-standard="iso21434">Component out-of-context</li>
+                        <li class="process-item" data-process="off-the-shelf-component" data-standard="iso21434">Off-the-shelf component</li>
+                        <li class="process-item" data-process="cybersecurity-case" data-standard="iso21434">Cybersecurity case</li>
+                        <li class="process-item" data-process="cybersecurity-assessment" data-standard="iso21434">Cybersecurity assessment</li>
+                        <li class="process-item" data-process="release-for-post-development" data-standard="iso21434">Release for post-development</li>
+                    </ul>
+                    
+                    <h3>Clause 7: Continuous cybersecurity activities</h3>
+                    <ul>
+                        <li class="process-item" data-process="cybersecurity-monitoring" data-standard="iso21434">Cybersecurity monitoring</li>
+                        <li class="process-item" data-process="cybersecurity-event-evaluation" data-standard="iso21434">Cybersecurity event evaluation</li>
+                        <li class="process-item" data-process="vulnerability-analysis" data-standard="iso21434">Vulnerability analysis</li>
+                        <li class="process-item" data-process="vulnerability-management" data-standard="iso21434">Vulnerability management</li>
+                    </ul>
+                    
+                    <h3>Clause 8: Distributed cybersecurity activities</h3>
+                    <ul>
+                        <li class="process-item" data-process="supplier-capability" data-standard="iso21434">Supplier capability</li>
+                        <li class="process-item" data-process="request-for-quotation" data-standard="iso21434">Request for quotation</li>
+                        <li class="process-item" data-process="alignment-of-responsibilities" data-standard="iso21434">Alignment of responsibilities</li>
+                    </ul>
+                    
+                    <h3>Clause 9: Concept phase</h3>
+                    <ul>
+                        <li class="process-item" data-process="item-definition" data-standard="iso21434">Item definition</li>
+                        <li class="process-item" data-process="cybersecurity-goals" data-standard="iso21434">Cybersecurity goals</li>
+                        <li class="process-item" data-process="cybersecurity-concept" data-standard="iso21434">Cybersecurity concept</li>
+                    </ul>
+                    
+                    <h3>Clause 10: Product development</h3>
+                    <ul>
+                        <li class="process-item" data-process="design" data-standard="iso21434">Design</li>
+                        <li class="process-item" data-process="integration-and-verification" data-standard="iso21434">Integration and verification</li>
+                    </ul>
+                    
+                    <h3>Clause 11: Cybersecurity validation</h3>
+                    <ul>
+                        <li class="process-item" data-process="validation-of-cybersecurity-goals" data-standard="iso21434">Validation of cybersecurity goals</li>
+                    </ul>
+                    
+                    <h3>Clause 12: Production</h3>
+                    <ul>
+                        <li class="process-item" data-process="production-control-plan" data-standard="iso21434">Production control plan</li>
+                        <li class="process-item" data-process="production" data-standard="iso21434">Production</li>
+                    </ul>
+                    
+                    <h3>Clause 13: Operations and maintenance</h3>
+                    <ul>
+                        <li class="process-item" data-process="cybersecurity-incident-response" data-standard="iso21434">Cybersecurity incident response</li>
+                        <li class="process-item" data-process="updates" data-standard="iso21434">Updates</li>
+                    </ul>
+                    
+                    <h3>Clause 14: End of cybersecurity support and decommissioning</h3>
+                    <ul>
+                        <li class="process-item" data-process="end-of-cybersecurity-support" data-standard="iso21434">End of cybersecurity support</li>
+                        <li class="process-item" data-process="decommissioning" data-standard="iso21434">Decommissioning</li>
+                    </ul>
+                    
+                    <h3>Clause 15: Threat analysis and risk assessment (TARA)</h3>
+                    <ul>
+                        <li class="process-item" data-process="asset-identification" data-standard="iso21434">Asset identification</li>
+                        <li class="process-item" data-process="threat-scenario-identification" data-standard="iso21434">Threat scenario identification</li>
+                        <li class="process-item" data-process="impact-rating" data-standard="iso21434">Impact rating</li>
+                        <li class="process-item" data-process="attack-path-analysis" data-standard="iso21434">Attack path analysis</li>
+                        <li class="process-item" data-process="attack-feasibility-rating" data-standard="iso21434">Attack feasibility rating</li>
+                        <li class="process-item" data-process="risk-value-determination" data-standard="iso21434">Risk value determination</li>
+                        <li class="process-item" data-process="risk-treatment-decision" data-standard="iso21434">Risk treatment decision</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="column" tabindex="0" id="process-details-column">
+                <div class="column-header">Process Description</div>
+                <div class="column-content" id="process-details-content">
+                    <p style="color: #999; font-style: italic;">Select a process from the list to view its description.</p>
+                </div>
+            </div>
+            
+            <div class="column" tabindex="0">
+                <div class="tabs-container">
+                    <div class="tabs-list" role="tablist">
+                        <div class="tab active" role="tab" aria-selected="true" data-tab="tab1">
+                            <button type="button" class="tab-button" title="Engineering Translation">Engineering Translation</button>
+                            <button type="button" class="tab-close" aria-label="Close tab" title="Close tab">
+                                <svg viewBox="0 0 14 14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2.8802 11.1191C2.69221 10.9365 2.69758 10.6249 2.8802 10.4423L6.3177 6.99946L2.8802 3.56196C2.69758 3.37934 2.69758 3.07319 2.8802 2.8852C3.06281 2.69184 3.37971 2.69721 3.56232 2.8852L6.99982 6.3227L10.4373 2.8852C10.6199 2.69721 10.9315 2.69721 11.1195 2.8852C11.3074 3.06782 11.3021 3.37934 11.1195 3.56196L7.68195 6.99946L11.1195 10.4423C11.3021 10.6249 11.3021 10.9311 11.1195 11.1191C10.9368 11.3071 10.6199 11.3017 10.4373 11.1191L6.99982 7.68159L3.56232 11.1191C3.37971 11.3017 3.06818 11.3017 2.8802 11.1191Z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="tab" role="tab" aria-selected="false" data-tab="tab2">
+                            <button type="button" class="tab-button" title="Business Translation">Business Translation</button>
+                            <button type="button" class="tab-close" aria-label="Close tab" title="Close tab">
+                                <svg viewBox="0 0 14 14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2.8802 11.1191C2.69221 10.9365 2.69758 10.6249 2.8802 10.4423L6.3177 6.99946L2.8802 3.56196C2.69758 3.37934 2.69758 3.07319 2.8802 2.8852C3.06281 2.69184 3.37971 2.69721 3.56232 2.8852L6.99982 6.3227L10.4373 2.8852C10.6199 2.69721 10.9315 2.69721 11.1195 2.8852C11.3074 3.06782 11.3021 3.37934 11.1195 3.56196L7.68195 6.99946L11.1195 10.4423C11.3021 10.6249 11.3021 10.9311 11.1195 11.1191C10.9368 11.3071 10.6199 11.3017 10.4373 11.1191L6.99982 7.68159L3.56232 11.1191C3.37971 11.3017 3.06818 11.3017 2.8802 11.1191Z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="tabs-spacer"></div>
+                    </div>
+                    <div class="tabs-content">
+                        <button class="tab-save-button" type="button">Save</button>
+                        <div class="tab-panel active" id="tab1" role="tabpanel">
+                            <p>To jest zawartość pierwszego taba. Taby zostały zaprojektowane w stylu cursor.html z charakterystycznymi elementami interfejsu.</p>
+                            
+                            <h3>Funkcje tabów</h3>
+                            <ul>
+                                <li>Przełączanie między tabami</li>
+                                <li>Przycisk zamykania na każdym tabie</li>
+                                <li>Wizualne oznaczenie aktywnego taba</li>
+                                <li>Hover effects</li>
+                            </ul>
+                            
+                            <h3>Design</h3>
+                            <p>Style tabów zostały skopiowane z oryginalnego pliku cursor.html, zachowując autentyczny wygląd interfejsu Cursor.</p>
+                        </div>
+                        <div class="tab-panel" id="tab2" role="tabpanel">
+                            <p>To jest zawartość drugiego taba. Możesz dodać tutaj dowolną treść.</p>
+                            
+                            <h3>Przykładowa zawartość</h3>
+                            <ul>
+                                <li>Różne sekcje informacji</li>
+                                <li>Listy i akapity</li>
+                                <li>Formatowanie tekstu</li>
+                                <li>Wszystko co potrzebujesz</li>
+                            </ul>
+                            
+                            <h3>Elastyczność</h3>
+                            <p>Każdy tab może zawierać różne treści, co pozwala na organizację informacji w logiczne sekcje.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="mac-window" id="window2" style="top: 40%; left: 45%;" data-standard="cra">
+        <div class="titlebar">
+            <div class="traffic-lights">
+                <div class="traffic-light red"></div>
+                <div class="traffic-light yellow"></div>
+                <div class="traffic-light green"></div>
+            </div>
+            <div class="window-title">CRA</div>
+            <button class="titlebar-menu-button" type="button" aria-label="Menu">
+                <svg viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="5" cy="12" r="1.5"/>
+                    <circle cx="12" cy="12" r="1.5"/>
+                    <circle cx="19" cy="12" r="1.5"/>
+                </svg>
+            </button>
+            <div class="titlebar-menu">
+                <button class="titlebar-menu-item" type="button" data-action="remove-column" data-column="1">
+                    <div class="titlebar-menu-checkbox">
+                        <div class="titlebar-menu-checkmark">
+                            <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 6 L5 9 L10 2"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <span>Usuń kolumnę 1</span>
+                </button>
+                <button class="titlebar-menu-item" type="button" data-action="remove-column" data-column="2">
+                    <div class="titlebar-menu-checkbox">
+                        <div class="titlebar-menu-checkmark">
+                            <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 6 L5 9 L10 2"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <span>Usuń kolumnę 2</span>
+                </button>
+                <button class="titlebar-menu-item" type="button" data-action="remove-column" data-column="3">
+                    <div class="titlebar-menu-checkbox">
+                        <div class="titlebar-menu-checkmark">
+                            <svg viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M2 6 L5 9 L10 2"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <span>Usuń kolumnę 3</span>
+                </button>
+            </div>
+        </div>
+        <div class="window-content">
+            <div class="column" tabindex="0" id="cra-processes-column">
+                <div class="column-header">CRA Processes</div>
+                <div class="column-content">
+                    <p>Processes defined in EU Regulation 2024/... (CRA) — Cybersecurity Resilience Act:</p>
+                    
+                    <h3>Article 10: Security by design and by default</h3>
+                    <ul>
+                        <li class="process-item" data-process="security-by-design" data-standard="cra">Security by design</li>
+                        <li class="process-item" data-process="security-by-default" data-standard="cra">Security by default</li>
+                        <li class="process-item" data-process="secure-development" data-standard="cra">Secure development lifecycle</li>
+                    </ul>
+                    
+                    <h3>Article 11: Vulnerability handling</h3>
+                    <ul>
+                        <li class="process-item" data-process="vulnerability-handling" data-standard="cra">Vulnerability handling process</li>
+                        <li class="process-item" data-process="vulnerability-disclosure" data-standard="cra">Vulnerability disclosure</li>
+                        <li class="process-item" data-process="security-updates" data-standard="cra">Security updates</li>
+                    </ul>
+                    
+                    <h3>Article 12: Documentation</h3>
+                    <ul>
+                        <li class="process-item" data-process="technical-documentation" data-standard="cra">Technical documentation</li>
+                        <li class="process-item" data-process="security-documentation" data-standard="cra">Security documentation</li>
+                    </ul>
+                    
+                    <h3>Article 13: Conformity assessment</h3>
+                    <ul>
+                        <li class="process-item" data-process="conformity-assessment" data-standard="cra">Conformity assessment</li>
+                        <li class="process-item" data-process="self-assessment" data-standard="cra">Self-assessment</li>
+                        <li class="process-item" data-process="third-party-assessment" data-standard="cra">Third-party assessment</li>
+                    </ul>
+                    
+                    <h3>Article 14: Reporting obligations</h3>
+                    <ul>
+                        <li class="process-item" data-process="incident-reporting" data-standard="cra">Incident reporting</li>
+                        <li class="process-item" data-process="vulnerability-reporting" data-standard="cra">Vulnerability reporting</li>
+                    </ul>
+                    
+                    <h3>Article 15: Market surveillance</h3>
+                    <ul>
+                        <li class="process-item" data-process="market-surveillance" data-standard="cra">Market surveillance compliance</li>
+                        <li class="process-item" data-process="recall-procedures" data-standard="cra">Recall procedures</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="column" tabindex="0" id="cra-process-details-column">
+                <div class="column-header">Process Description</div>
+                <div class="column-content" id="cra-process-details-content">
+                    <p style="color: #999; font-style: italic;">Select a process from the list to view its description.</p>
+                </div>
+            </div>
+            
+            <div class="column" tabindex="0">
+                <div class="tabs-container">
+                    <div class="tabs-list" role="tablist">
+                        <div class="tab active" role="tab" aria-selected="true" data-tab="cra-tab1">
+                            <button type="button" class="tab-button" title="Engineering Translation">Engineering Translation</button>
+                            <button type="button" class="tab-close" aria-label="Close tab" title="Close tab">
+                                <svg viewBox="0 0 14 14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2.8802 11.1191C2.69221 10.9365 2.69758 10.6249 2.8802 10.4423L6.3177 6.99946L2.8802 3.56196C2.69758 3.37934 2.69758 3.07319 2.8802 2.8852C3.06281 2.69184 3.37971 2.69721 3.56232 2.8852L6.99982 6.3227L10.4373 2.8852C10.6199 2.69721 10.9315 2.69721 11.1195 2.8852C11.3074 3.06782 11.3021 3.37934 11.1195 3.56196L7.68195 6.99946L11.1195 10.4423C11.3021 10.6249 11.3021 10.9311 11.1195 11.1191C10.9368 11.3071 10.6199 11.3017 10.4373 11.1191L6.99982 7.68159L3.56232 11.1191C3.37971 11.3017 3.06818 11.3017 2.8802 11.1191Z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="tab" role="tab" aria-selected="false" data-tab="cra-tab2">
+                            <button type="button" class="tab-button" title="Business Translation">Business Translation</button>
+                            <button type="button" class="tab-close" aria-label="Close tab" title="Close tab">
+                                <svg viewBox="0 0 14 14" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                                    <path d="M2.8802 11.1191C2.69221 10.9365 2.69758 10.6249 2.8802 10.4423L6.3177 6.99946L2.8802 3.56196C2.69758 3.37934 2.69758 3.07319 2.8802 2.8852C3.06281 2.69184 3.37971 2.69721 3.56232 2.8852L6.99982 6.3227L10.4373 2.8852C10.6199 2.69721 10.9315 2.69721 11.1195 2.8852C11.3074 3.06782 11.3021 3.37934 11.1195 3.56196L7.68195 6.99946L11.1195 10.4423C11.3021 10.6249 11.3021 10.9311 11.1195 11.1191C10.9368 11.3071 10.6199 11.3017 10.4373 11.1191L6.99982 7.68159L3.56232 11.1191C3.37971 11.3017 3.06818 11.3017 2.8802 11.1191Z"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="tabs-spacer"></div>
+                    </div>
+                    <div class="tabs-content">
+                        <button class="tab-save-button" type="button">Save</button>
+                        <div class="tab-panel active" id="cra-tab1" role="tabpanel">
+                            <p style="color: #999; font-style: italic;">Select a process from the list to view Engineering Translation.</p>
+                        </div>
+                        <div class="tab-panel" id="cra-tab2" role="tabpanel">
+                            <p style="color: #999; font-style: italic;">Select a process from the list to view Business Translation.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const windows = document.querySelectorAll('.mac-window');
+            let currentZIndex = 1;
+            
+            // Funkcja do ustawienia okna na wierzch
+            function bringToFront(clickedWindow) {
+                // Usuń klasę active ze wszystkich okien
+                const allWindows = document.querySelectorAll('.mac-window');
+                allWindows.forEach(win => {
+                    win.classList.remove('active');
+                });
+                
+                // Dodaj klasę active do klikniętego okna
+                clickedWindow.classList.add('active');
+                
+                // Ustaw z-index
+                currentZIndex++;
+                clickedWindow.style.zIndex = currentZIndex;
+            }
+
+            // Funkcja do inicjalizacji przeciągania dla pojedynczego okna
+            function initWindowDrag(macWindow) {
+                const titlebar = macWindow.querySelector('.titlebar') || macWindow.querySelector('.windows-titlebar');
+                let isDragging = false;
+                let currentX;
+                let currentY;
+                let initialX;
+                let initialY;
+                let xOffset = 0;
+                let yOffset = 0;
+
+                // Inicjalizacja pozycji
+                function setTranslate(xPos, yPos, el) {
+                    el.style.transform = `translate(calc(-50% + ${xPos}px), calc(-50% + ${yPos}px))`;
+                }
+
+                // Ustawienie początkowej pozycji
+                function initPosition() {
+                    // Sprawdź czy okno ma już ustawioną pozycję początkową
+                    const initialTop = macWindow.style.top;
+                    const initialLeft = macWindow.style.left;
+                    
+                    if (!initialTop || !initialLeft) {
+                        xOffset = 0;
+                        yOffset = 0;
+                    } else {
+                        xOffset = 0;
+                        yOffset = 0;
+                    }
+                    setTranslate(xOffset, yOffset, macWindow);
+                }
+
+                titlebar.addEventListener('mousedown', dragStart);
+                titlebar.addEventListener('touchstart', dragStart, { passive: false });
+
+                function dragStart(e) {
+                    if (e.type === "touchstart") {
+                        initialX = e.touches[0].clientX - xOffset;
+                        initialY = e.touches[0].clientY - yOffset;
+                    } else {
+                        initialX = e.clientX - xOffset;
+                        initialY = e.clientY - yOffset;
+                    }
+
+                    if (e.target === titlebar || titlebar.contains(e.target)) {
+                        isDragging = true;
+                        macWindow.classList.add('dragging');
+                        bringToFront(macWindow); // Aktywuj okno podczas przeciągania
+                        e.stopPropagation(); // Zapobiega przeciąganiu wielu okien jednocześnie
+                    }
+                }
+
+                function drag(e) {
+                    if (isDragging) {
+                        e.preventDefault();
+                        
+                        if (e.type === "touchmove") {
+                            currentX = e.touches[0].clientX - initialX;
+                            currentY = e.touches[0].clientY - initialY;
+                        } else {
+                            currentX = e.clientX - initialX;
+                            currentY = e.clientY - initialY;
+                        }
+
+                        xOffset = currentX;
+                        yOffset = currentY;
+
+                        // Ograniczenie do granic ekranu
+                        const rect = macWindow.getBoundingClientRect();
+                        const maxX = (window.innerWidth - rect.width) / 2;
+                        const maxY = (window.innerHeight - rect.height) / 2;
+
+                        xOffset = Math.max(-maxX, Math.min(maxX, xOffset));
+                        yOffset = Math.max(-maxY, Math.min(maxY, yOffset));
+
+                        setTranslate(xOffset, yOffset, macWindow);
+                    }
+                }
+
+                function dragEnd() {
+                    if (isDragging) {
+                        initialX = currentX;
+                        initialY = currentY;
+                        isDragging = false;
+                        macWindow.classList.remove('dragging');
+                    }
+                }
+
+                // Event listenery na document, aby działały nawet gdy kursor wyjdzie poza okno
+                document.addEventListener('mousemove', drag);
+                document.addEventListener('touchmove', drag, { passive: false });
+                document.addEventListener('mouseup', dragEnd);
+                document.addEventListener('touchend', dragEnd);
+
+                // Inicjalizacja przy załadowaniu strony
+                initPosition();
+            }
+
+            // Inicjalizacja wszystkich okien Mac
+            windows.forEach(window => {
+                initWindowDrag(window);
+                
+                // Obsługa kliknięcia na okno (nie tylko titlebar)
+                let clickStartTime = 0;
+                let clickStartX = 0;
+                let clickStartY = 0;
+                
+                window.addEventListener('mousedown', function(e) {
+                    // Nie aktywuj jeśli kliknięto w link lub przycisk
+                    if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') {
+                        return;
+                    }
+                    // Zapisz czas i pozycję kliknięcia
+                    clickStartTime = Date.now();
+                    clickStartX = e.clientX;
+                    clickStartY = e.clientY;
+                    
+                    // Aktywuj okno od razu
+                    bringToFront(window);
+                });
+
+                // Sprawdź czy to było kliknięcie czy przeciąganie
+                window.addEventListener('mouseup', function(e) {
+                    const clickDuration = Date.now() - clickStartTime;
+                    const moveDistance = Math.sqrt(
+                        Math.pow(e.clientX - clickStartX, 2) + 
+                        Math.pow(e.clientY - clickStartY, 2)
+                    );
+                    
+                    // Jeśli kliknięcie było krótkie i bez ruchu, to zwykłe kliknięcie
+                    if (clickDuration < 200 && moveDistance < 5) {
+                        bringToFront(window);
+                    }
+                });
+
+                // Obsługa dotyku na urządzeniach mobilnych
+                window.addEventListener('touchstart', function(e) {
+                    if (e.target.tagName === 'A' || e.target.tagName === 'BUTTON') {
+                        return;
+                    }
+                    bringToFront(window);
+                }, { passive: true });
+            });
+
+            // Ustaw pierwsze okno jako aktywne na starcie
+            if (windows.length > 0) {
+                bringToFront(windows[0]);
+            }
+
+
+            // Obsługa tabów
+            function initTabs() {
+                const allTabs = document.querySelectorAll('.tab[role="tab"]');
+                const allTabsContent = document.querySelectorAll('.tabs-content');
+                let originalContent = new Map(); // Przechowuje oryginalną zawartość przed edycją
+                let isEditing = false;
+                
+                allTabs.forEach(tab => {
+                    const tabButton = tab.querySelector('.tab-button');
+                    const tabId = tab.getAttribute('data-tab');
+                    
+                    // Obsługa kliknięcia na tab
+                    tabButton.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        switchTab(tabId);
+                    });
+                    
+                    // Obsługa kliknięcia na przycisk zamykania
+                    const closeButton = tab.querySelector('.tab-close');
+                    if (closeButton) {
+                        closeButton.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            // Tutaj można dodać logikę zamykania taba
+                            // Na razie tylko przełączamy na inny tab
+                            const allTabsArray = Array.from(allTabs);
+                            const currentIndex = allTabsArray.indexOf(tab);
+                            const nextTab = allTabsArray.find((t, i) => i !== currentIndex && !t.classList.contains('active'));
+                            if (nextTab) {
+                                switchTab(nextTab.getAttribute('data-tab'));
+                            }
+                        });
+                    }
+                });
+
+                // Obsługa edycji tabów
+                allTabsContent.forEach(tabsContent => {
+                    const tabPanels = tabsContent.querySelectorAll('.tab-panel');
+                    const saveButton = tabsContent.querySelector('.tab-save-button');
+                    
+                    tabPanels.forEach(panel => {
+                        // Obsługa podwójnego kliknięcia na panel - pytanie czy edytować
+                        panel.addEventListener('dblclick', function(e) {
+                            // Nie pytaj jeśli już edytujemy lub kliknięto w przycisk
+                            if (isEditing || e.target === saveButton || e.target.closest('.tab-save-button')) {
+                                return;
+                            }
+                            
+                            // Pytanie czy na pewno chce edytować
+                            const confirmEdit = confirm('Czy na pewno chcesz edytować zawartość tego taba?');
+                            
+                            if (confirmEdit) {
+                                // Zapisz oryginalną zawartość
+                                originalContent.set(panel.id, panel.innerHTML);
+                                
+                                // Włącz edycję
+                                panel.setAttribute('contenteditable', 'true');
+                                panel.focus();
+                                
+                                // Pokaż przycisk Save
+                                tabsContent.classList.add('editing');
+                                isEditing = true;
+                            }
+                        });
+
+                        // Obsługa przycisku Save
+                        if (saveButton) {
+                            saveButton.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                
+                                // Znajdź aktywny panel
+                                const activePanel = tabsContent.querySelector('.tab-panel.active');
+                                if (activePanel) {
+                                    // Zapisz zawartość do localStorage
+                                    const storageKey = `tab-content-${activePanel.id}`;
+                                    localStorage.setItem(storageKey, activePanel.innerHTML);
+                                    
+                                    // Wyłącz edycję
+                                    activePanel.removeAttribute('contenteditable');
+                                    
+                                    // Ukryj przycisk Save
+                                    tabsContent.classList.remove('editing');
+                                    isEditing = false;
+                                    
+                                    // Usuń zapisaną zawartość (już zapisana w DOM i localStorage)
+                                    originalContent.delete(activePanel.id);
+                                    
+                                    alert('Zmiany zostały zapisane.');
+                                }
+                            });
+                        }
+
+                        // Obsługa ESC - anuluj edycję
+                        panel.addEventListener('keydown', function(e) {
+                            if (e.key === 'Escape' && panel.hasAttribute('contenteditable')) {
+                                // Przywróć oryginalną zawartość
+                                if (originalContent.has(panel.id)) {
+                                    panel.innerHTML = originalContent.get(panel.id);
+                                }
+                                
+                                // Wyłącz edycję
+                                panel.removeAttribute('contenteditable');
+                                
+                                // Ukryj przycisk Save
+                                tabsContent.classList.remove('editing');
+                                isEditing = false;
+                                
+                                // Usuń zapisaną zawartość
+                                originalContent.delete(panel.id);
+                            }
+                        });
+                    });
+                });
+            }
+            
+            function switchTab(tabId) {
+                // Znajdź wszystkie taby i panele
+                const allTabs = document.querySelectorAll('.tab[role="tab"]');
+                const allPanels = document.querySelectorAll('.tab-panel');
+                
+                // Usuń aktywność ze wszystkich tabów i paneli
+                allTabs.forEach(tab => {
+                    tab.classList.remove('active');
+                    tab.setAttribute('aria-selected', 'false');
+                });
+                
+                allPanels.forEach(panel => {
+                    panel.classList.remove('active');
+                });
+                
+                // Aktywuj wybrany tab i panel
+                const selectedTab = document.querySelector(`.tab[data-tab="${tabId}"]`);
+                const selectedPanel = document.getElementById(tabId);
+                
+                if (selectedTab && selectedPanel) {
+                    selectedTab.classList.add('active');
+                    selectedTab.setAttribute('aria-selected', 'true');
+                    selectedPanel.classList.add('active');
+                }
+            }
+            
+            // Inicjalizacja tabów przy załadowaniu strony
+            initTabs();
+
+            // Funkcja do ładowania zapisanej zawartości z localStorage
+            function loadSavedTabContent() {
+                const allTabPanels = document.querySelectorAll('.tab-panel');
+                
+                allTabPanels.forEach(panel => {
+                    const storageKey = `tab-content-${panel.id}`;
+                    const savedContent = localStorage.getItem(storageKey);
+                    
+                    if (savedContent) {
+                        // Załaduj zapisaną zawartość
+                        panel.innerHTML = savedContent;
+                    }
+                });
+            }
+
+            // Załaduj zapisaną zawartość przy starcie
+            loadSavedTabContent();
+
+            // Obsługa menu w titlebar (3 kropki)
+            function initTitlebarMenu() {
+                const menuButtons = document.querySelectorAll('.titlebar-menu-button');
+                const menus = document.querySelectorAll('.titlebar-menu');
+                
+                menuButtons.forEach((button, index) => {
+                    const menu = menus[index];
+                    
+                    if (!menu) return;
+                    
+                    // Toggle menu po kliknięciu
+                    button.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        
+                        // Zamknij wszystkie inne menu
+                        menus.forEach(m => {
+                            if (m !== menu) {
+                                m.classList.remove('show');
+                            }
+                        });
+                        
+                        // Toggle aktualnego menu
+                        menu.classList.toggle('show');
+                    });
+                    
+                    // Zamknij menu po kliknięciu poza nim
+                    document.addEventListener('click', function(e) {
+                        if (!button.contains(e.target) && !menu.contains(e.target)) {
+                            menu.classList.remove('show');
+                        }
+                    });
+                    
+                    // Zamknij menu po kliknięciu w item
+                    const menuItems = menu.querySelectorAll('.titlebar-menu-item');
+                    menuItems.forEach(item => {
+                        item.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            
+                            // Toggle checkbox (zaznacz/odznacz)
+                            item.classList.toggle('checked');
+                            
+                            // Obsługa usuwania kolumn
+                            const action = item.getAttribute('data-action');
+                            const columnNumber = item.getAttribute('data-column');
+                            const isChecked = item.classList.contains('checked');
+                            
+                            if (action === 'remove-column' && columnNumber) {
+                                const window = button.closest('.mac-window');
+                                if (window) {
+                                    const windowContent = window.querySelector('.window-content');
+                                    if (windowContent) {
+                                        const columns = windowContent.querySelectorAll('.column');
+                                        const columnIndex = parseInt(columnNumber) - 1;
+                                        
+                                        if (isChecked) {
+                                            // Zaznaczono - ukryj kolumnę
+                                            if (columns[columnIndex]) {
+                                                columns[columnIndex].style.display = 'none';
+                                            }
+                                        } else {
+                                            // Odznaczono - pokaż kolumnę
+                                            if (columns[columnIndex]) {
+                                                columns[columnIndex].style.display = 'flex';
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    });
+                });
+            }
+            
+            // Inicjalizacja menu w titlebar
+            initTitlebarMenu();
+
+            // Inicjalizacja pokazywania scrollbara podczas przewijania
+            function initColumnScrollbar() {
+                // Znajdź wszystkie elementy z zawartością do przewijania
+                const scrollableElements = document.querySelectorAll('.column-content, .tabs-content');
+                
+                scrollableElements.forEach(element => {
+                    let scrollTimeout;
+                    let isScrolling = false;
+                    
+                    // Funkcja pokazująca scrollbar
+                    function showScrollbar() {
+                        // Sprawdź czy element można przewijać
+                        const canScroll = element.scrollHeight > element.clientHeight;
+                        if (!canScroll) {
+                            element.classList.remove('scrolling');
+                            return;
+                        }
+                        
+                        // Dodaj klasę scrolling
+                        if (!element.classList.contains('scrolling')) {
+                            element.classList.add('scrolling');
+                        }
+                        
+                        isScrolling = true;
+                        
+                        // Wyczyść poprzedni timeout
+                        if (scrollTimeout) {
+                            clearTimeout(scrollTimeout);
+                        }
+                        
+                        // Ukryj scrollbar po 1 sekundzie bezczynności
+                        scrollTimeout = setTimeout(() => {
+                            element.classList.remove('scrolling');
+                            isScrolling = false;
+                        }, 1000);
+                    }
+                    
+                    // Obsługa przewijania kółkiem myszy
+                    element.addEventListener('wheel', function(e) {
+                        // Sprawdź czy element można przewijać
+                        const canScroll = element.scrollHeight > element.clientHeight;
+                        if (canScroll) {
+                            showScrollbar();
+                        }
+                    }, { passive: true });
+                    
+                    // Obsługa przewijania przez scroll
+                    element.addEventListener('scroll', function() {
+                        const canScroll = element.scrollHeight > element.clientHeight;
+                        if (canScroll) {
+                            showScrollbar();
+                        }
+                    }, { passive: true });
+                    
+                    // Obsługa najechania myszką - jeśli scrollbar jest widoczny, przedłuż czas
+                    element.addEventListener('mouseenter', function() {
+                        if (isScrolling) {
+                            showScrollbar();
+                        }
+                    });
+                });
+            }
+            
+            // Inicjalizacja scrollbara po załadowaniu strony
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initColumnScrollbar);
+            } else {
+                initColumnScrollbar();
+            }
+
+            // Obsługa zmiany rozmiaru okna przeglądarki
+            window.addEventListener('resize', function() {
+                if (window.innerWidth <= 768) {
+                    windows.forEach(macWindow => {
+                        const xOffset = 0;
+                        const yOffset = 0;
+                        macWindow.style.transform = `translate(calc(-50% + ${xOffset}px), calc(-50% + ${yOffset}px))`;
+                    });
+                }
+            });
+
+            // Obsługa kliknięć na procesy ISO 21434 i CRA
+            function initProcessSelection() {
+                const processItems = document.querySelectorAll('.process-item');
+                
+                processItems.forEach(item => {
+                    item.addEventListener('click', async function() {
+                        // Określ standard (ISO 21434 lub CRA)
+                        const standard = item.getAttribute('data-standard') || 'iso21434';
+                        const processId = item.getAttribute('data-process');
+                        const processName = item.textContent;
+                        
+                        // Wybierz odpowiednie elementy DOM w zależności od standardu
+                        let processDetailsContent, tab1Content, tab2Content;
+                        if (standard === 'cra') {
+                            processDetailsContent = document.getElementById('cra-process-details-content');
+                            tab1Content = document.getElementById('cra-tab1');
+                            tab2Content = document.getElementById('cra-tab2');
+                        } else {
+                            processDetailsContent = document.getElementById('process-details-content');
+                            tab1Content = document.getElementById('tab1');
+                            tab2Content = document.getElementById('tab2');
+                        }
+                        
+                        // Usuń klasę active z poprzedniego elementu w tym samym oknie
+                        const window = item.closest('.mac-window');
+                        const previousActive = window.querySelector('.process-item.active');
+                        if (previousActive) {
+                            previousActive.classList.remove('active');
+                        }
+                        
+                        // Dodaj klasę active do klikniętego elementu
+                        item.classList.add('active');
+                        
+                        // Pokaż stan ładowania
+                        if (processDetailsContent) processDetailsContent.innerHTML = `<p style="color: #999; font-style: italic;">Loading...</p>`;
+                        if (tab1Content) tab1Content.innerHTML = `<p style="color: #999; font-style: italic;">Loading...</p>`;
+                        if (tab2Content) tab2Content.innerHTML = `<p style="color: #999; font-style: italic;">Loading...</p>`;
+                        
+                        // Ładuj wszystkie 3 pliki równolegle
+                        const basePath = standard === 'cra' ? `cra-processes/${processId}` : `processes/${processId}`;
+                        
+                        // Ładuj opis procesu
+                        if (processDetailsContent) {
+                            try {
+                                const response = await fetch(`${basePath}/description.html`);
+                                if (response.ok) {
+                                    processDetailsContent.innerHTML = await response.text();
+                                } else {
+                                    processDetailsContent.innerHTML = `
+                                        <h3>${processName}</h3>
+                                        <p style="color: #999; font-style: italic; margin-top: 20px;">File not found: ${basePath}/description.html</p>
+                                    `;
+                                }
+                            } catch (error) {
+                                processDetailsContent.innerHTML = `
+                                    <h3>${processName}</h3>
+                                    <p style="color: #c00; margin-top: 20px;">Error loading content. Make sure you're running a local server.</p>
+                                    <p style="color: #999; font-size: 12px; margin-top: 10px;">Run: <code>python3 -m http.server 8000</code> in the project directory, then open <code>http://localhost:8000</code></p>
+                                `;
+                            }
+                        }
+                        
+                        // Ładuj Engineering Translation
+                        if (tab1Content) {
+                            try {
+                                const response = await fetch(`${basePath}/engineering-translation.html`);
+                                if (response.ok) {
+                                    tab1Content.innerHTML = await response.text();
+                                } else {
+                                    tab1Content.innerHTML = `<p style="color: #999; font-style: italic;">Engineering translation not available.</p>`;
+                                }
+                            } catch (error) {
+                                tab1Content.innerHTML = `<p style="color: #999; font-style: italic;">Engineering translation not available.</p>`;
+                            }
+                        }
+                        
+                        // Ładuj Business Translation
+                        if (tab2Content) {
+                            try {
+                                const response = await fetch(`${basePath}/business-translation.html`);
+                                if (response.ok) {
+                                    tab2Content.innerHTML = await response.text();
+                                } else {
+                                    tab2Content.innerHTML = `<p style="color: #999; font-style: italic;">Business translation not available.</p>`;
+                                }
+                            } catch (error) {
+                                tab2Content.innerHTML = `<p style="color: #999; font-style: italic;">Business translation not available.</p>`;
+                            }
+                        }
+                    });
+                });
+            }
+            
+            // Inicjalizacja wyboru procesów
+            initProcessSelection();
+        })();
+    </script>
+</body>
+</html>
+
+
+
