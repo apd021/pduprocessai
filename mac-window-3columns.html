@@ -1217,6 +1217,45 @@
         </div>
     </div>
 
+    <!-- Okno agenta AI -->
+    <div class="mac-window" id="window3" style="top: 55%; left: 55%; width: 720px;" data-standard="ai">
+        <div class="titlebar">
+            <div class="traffic-lights">
+                <div class="traffic-light red"></div>
+                <div class="traffic-light yellow"></div>
+                <div class="traffic-light green"></div>
+            </div>
+            <div class="window-title">AI Agent</div>
+        </div>
+        <div class="window-content">
+            <div class="column" tabindex="0" style="border-right: none; padding-right: 20px;">
+                <div class="column-header">AI Assistant</div>
+                <div class="column-content" id="ai-chat" style="display: flex; flex-direction: column; gap: 8px;">
+                    <div id="ai-context" style="padding: 8px 10px; margin-bottom: 8px; border-radius: 4px; background: #f7f7f4; font-size: 12px; color: #666;">
+                        <p style="color: #999; font-style: italic; margin: 0;">Select processes in the other windows. Their names will appear here as context for the AI.</p>
+                    </div>
+                    <div id="ai-messages" style="flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; overflow-y: auto;"></div>
+                    <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
+                        <div style="display:flex; flex-wrap: wrap; gap: 6px;">
+                            <button id="ai-template-summary" type="button" style="padding: 4px 8px; font-size: 12px; border-radius: 999px; border: 1px solid rgba(0,0,0,0.15); background: #ffffff; color: rgba(0,0,0,0.7); cursor: pointer;">
+                                Make summary
+                            </button>
+                            <button id="ai-template-outputs" type="button" style="padding: 4px 8px; font-size: 12px; border-radius: 999px; border: 1px solid rgba(0,0,0,0.15); background: #ffffff; color: rgba(0,0,0,0.7); cursor: pointer;">
+                                Example outputs
+                            </button>
+                        </div>
+                        <textarea id="ai-input" rows="3" style="width: 100%; resize: vertical; padding: 8px; font-size: 13px; font-family: inherit; border: 1px solid rgba(0,0,0,0.2); border-radius: 4px;"></textarea>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color:#999;font-size:11px;">Use selected ISO/CRA processes as context.</span>
+                            <button id="ai-send" type="button" style="padding: 6px 12px; font-size: 13px; border-radius: 4px; border: none; background: #0078d4; color: #fff; cursor: pointer;">Ask AI</button>
+                        </div>
+                        <p style="color:#bbb;font-size:11px;margin:0;">This window prepares a prompt including selected processes. Connect <code>callAiAgent</code> in the script to your backend or local AI.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         (function() {
             const windows = document.querySelectorAll('.mac-window');
@@ -1802,9 +1841,156 @@
                     });
                 });
             }
+
+            // Zbieranie aktualnie wybranych procesów jako kontekst dla AI
+            function getSelectedProcessesContext() {
+                const activeIso = document.querySelector('#window1 .process-item.active');
+                const activeCra = document.querySelector('#window2 .process-item.active');
+                const parts = [];
+                if (activeIso) {
+                    parts.push(`ISO 21434: ${activeIso.textContent.trim()} (id: ${activeIso.getAttribute('data-process')})`);
+                }
+                if (activeCra) {
+                    parts.push(`CRA: ${activeCra.textContent.trim()} (id: ${activeCra.getAttribute('data-process')})`);
+                }
+                if (parts.length === 0) {
+                    return 'No process selected. Select a process in the ISO 21434 or CRA windows.';
+                }
+                return parts.join(' | ');
+            }
+
+            function getPrimarySelectedProcessLabel() {
+                const activeIso = document.querySelector('#window1 .process-item.active');
+                const activeCra = document.querySelector('#window2 .process-item.active');
+                if (activeIso) {
+                    return `ISO 21434 ${activeIso.textContent.trim()}`;
+                }
+                if (activeCra) {
+                    return `CRA ${activeCra.textContent.trim()}`;
+                }
+                return 'XYZ';
+            }
+
+            function getSelectedProcessLabelsForPrompt() {
+                const labels = [];
+                const activeIso = document.querySelector('#window1 .process-item.active');
+                const activeCra = document.querySelector('#window2 .process-item.active');
+                if (activeIso) labels.push(`ISO 21434 ${activeIso.textContent.trim()}`);
+                if (activeCra) labels.push(`CRA ${activeCra.textContent.trim()}`);
+                return labels;
+            }
+
+            // Dodawanie wiadomości do okna AI
+            function appendAiMessage(role, text) {
+                const container = document.getElementById('ai-messages');
+                if (!container) return;
+                const wrapper = document.createElement('div');
+                wrapper.style.padding = '6px 8px';
+                wrapper.style.borderRadius = '6px';
+                wrapper.style.fontSize = '13px';
+                wrapper.style.background = role === 'user' ? '#e6f2ff' : '#f3f3f3';
+                wrapper.style.alignSelf = role === 'user' ? 'flex-end' : 'flex-start';
+                wrapper.textContent = text;
+                container.appendChild(wrapper);
+                container.parentElement.scrollTop = container.parentElement.scrollHeight;
+            }
+
+            // Realne wywołanie backendu AI (HTTP)
+            async function callAiAgent(prompt, contextText) {
+                try {
+                    const response = await fetch('http://localhost:5001/ai', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            prompt,
+                            context: contextText
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const text = await response.text();
+                        return `AI error (${response.status}): ${text}`;
+                    }
+
+                    const data = await response.json();
+                    // Oczekiwany format: { reply: "tekst odpowiedzi" }
+                    if (data && typeof data.reply === 'string') {
+                        return data.reply;
+                    }
+
+                    return 'AI response format not recognized.';
+                } catch (err) {
+                    return `Could not reach AI backend at http://localhost:5001/ai.\nError: ${err}`;
+                }
+            }
+
+            function initAiAgentWindow() {
+                const input = document.getElementById('ai-input');
+                const sendBtn = document.getElementById('ai-send');
+                const contextBox = document.getElementById('ai-context');
+                const templateSummaryBtn = document.getElementById('ai-template-summary');
+                const templateOutputsBtn = document.getElementById('ai-template-outputs');
+                if (!input || !sendBtn || !contextBox) return;
+
+                function refreshContext() {
+                    const ctx = getSelectedProcessesContext();
+                    contextBox.innerHTML = `<p>${ctx}</p>`;
+                }
+
+                // Odśwież kontekst przy starcie
+                refreshContext();
+
+                // Główna obsługa wysłania promptu
+                async function handleSend() {
+                    const value = input.value.trim();
+                    if (!value) return;
+                    const ctx = getSelectedProcessesContext();
+                    appendAiMessage('user', value);
+                    input.value = '';
+                    const reply = await callAiAgent(value, ctx);
+                    appendAiMessage('assistant', reply);
+                }
+
+                sendBtn.addEventListener('click', handleSend);
+                input.addEventListener('keydown', function (e) {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        handleSend();
+                    }
+                });
+
+                if (templateSummaryBtn) {
+                    templateSummaryBtn.addEventListener('click', function () {
+                        const label = getPrimarySelectedProcessLabel();
+                        input.value = `Make summary of the process ${label}.`;
+                        input.focus();
+                    });
+                }
+
+                if (templateOutputsBtn) {
+                    templateOutputsBtn.addEventListener('click', function () {
+                        const labels = getSelectedProcessLabelsForPrompt();
+                        const list = labels.length ? labels.join(', ') : 'x, y, z';
+                        input.value = `Provide me with an example of the output(s) of the process(es) ${list}.`;
+                        input.focus();
+                    });
+                }
+
+                // Odświeżanie kontekstu przy zmianie aktywnego procesu
+                document.addEventListener('click', function (e) {
+                    if (e.target.classList && e.target.classList.contains('process-item')) {
+                        setTimeout(refreshContext, 10);
+                    }
+                });
+            }
             
             // Inicjalizacja wyboru procesów
             initProcessSelection();
+
+            // Inicjalizacja okna agenta AI
+            initAiAgentWindow();
         })();
     </script>
 </body>
